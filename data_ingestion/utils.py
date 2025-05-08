@@ -35,6 +35,9 @@ logger = logging.getLogger(__name__)
 
 def clean_text_for_storage(text):
     """Clean text for storage while preserving meaning"""
+    if not text:
+        return ""
+        
     # Remove URLs
     text = re.sub(r'https?://\S+', 'link', text)
     
@@ -43,6 +46,9 @@ def clean_text_for_storage(text):
     
     # Remove @ mentions
     text = re.sub(r'@\w+', 'mentions', text)
+    
+    # Remove leading punctuation like ellipses, dots, etc.
+    text = re.sub(r'^[\.\.\.,\-_:;!?\s]+', '', text)
     
     # Remove excessive whitespace
     text = re.sub(r'\s+', ' ', text).strip()

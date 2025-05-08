@@ -144,6 +144,11 @@ def process_reddit_content(content, content_type=None, producer=None):
     Returns:
         boolean: True if processed and sent to Kafka, False otherwise
     """
+    # Log the timestamp of the content being processed
+    created_time = datetime.fromtimestamp(content.created_utc)
+    time_diff = datetime.now() - created_time
+    logger.info(f"Processing {content_type} from {created_time} ({time_diff.total_seconds()/3600:.2f} hours ago)")
+    
     # Determine content type if not specified
     if content_type is None:
         # Check if it's a comment or submission based on object attributes
@@ -176,16 +181,17 @@ def process_reddit_content(content, content_type=None, producer=None):
         
         # Skip if too short to be meaningful
         if len(text.strip()) < MIN_CONTENT_LENGTH:
-            logger.debug(f"Skipping short content ({len(text.strip())} chars): {text[:30]}...")
+            logger.info(f"Skipping short content ({len(text.strip())} chars): {text[:30]}...")
             return False
         
         # Skip AutoModerator comments
         if content_type == "comment" and is_automoderator_comment(content.author.name, text):
-            logger.debug(f"Skipping AutoModerator comment in r/{content.subreddit.display_name}")
+            logger.info(f"Skipping AutoModerator comment in r/{content.subreddit.display_name}")
             return False
         
         # Check if relevant customer feedback
         if not is_relevant_feedback(text, title, platform_keywords, feedback_categories, feedback_related_keywords):
+            logger.info(f"Skipping non-relevant content: {title[:50]}...")
             return False
         
         # Identify platform
@@ -255,9 +261,23 @@ def stream_comments(reddit, producer):
         
         logger.info(f"Starting to stream comments from {len(unique_subreddits)} subreddits...")
         
+        # Log the current time to help with debugging
+        current_time = datetime.now()
+        logger.info(f"Stream started at {current_time}")
+        
         # Stream comments
-        for comment in subreddit.stream.comments(skip_existing=True):
-            process_reddit_content(comment, "comment", producer)
+        for comment in subreddit.stream.comments(skip_existing=True):  # Only get new comments
+            # Log each comment we receive from the stream
+            created_time = datetime.fromtimestamp(comment.created_utc)
+            time_diff = current_time - created_time
+            logger.info(f"Received comment from r/{comment.subreddit.display_name} created at {created_time} ({time_diff.total_seconds()/3600:.2f} hours ago)")
+            
+            # Process the comment
+            processed = process_reddit_content(comment, "comment", producer)
+            if processed:
+                logger.info(f"Successfully processed and sent comment to Kafka")
+            else:
+                logger.info(f"Comment was filtered out and not sent to Kafka")
                 
     except Exception as e:
         logger.error(f"Error in comment stream: {str(e)}")
@@ -273,9 +293,23 @@ def stream_posts(reddit, producer):
         
         logger.info(f"Starting to stream posts from {len(unique_subreddits)} subreddits...")
         
+        # Log the current time to help with debugging
+        current_time = datetime.now()
+        logger.info(f"Stream started at {current_time}")
+        
         # Stream posts
-        for submission in subreddit.stream.submissions(skip_existing=True):
-            process_reddit_content(submission, "post", producer)
+        for submission in subreddit.stream.submissions(skip_existing=True):  # Only get new posts
+            # Log each submission we receive from the stream
+            created_time = datetime.fromtimestamp(submission.created_utc)
+            time_diff = current_time - created_time
+            logger.info(f"Received post from r/{submission.subreddit.display_name} created at {created_time} ({time_diff.total_seconds()/3600:.2f} hours ago)")
+            
+            # Process the submission
+            processed = process_reddit_content(submission, "post", producer)
+            if processed:
+                logger.info(f"Successfully processed and sent post to Kafka")
+            else:
+                logger.info(f"Post was filtered out and not sent to Kafka")
                 
     except Exception as e:
         logger.error(f"Error in post stream: {str(e)}")
