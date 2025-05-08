@@ -7,8 +7,7 @@ from dotenv import load_dotenv
 from kafka import KafkaConsumer
 import snowflake.connector
 
-# Import sentiment analyzer and utility functions
-from sentiment_analyzer import SentimentAnalyzer
+# Import utility functions
 from utils import clean_text_for_storage, is_automoderator_comment
 
 # Load environment variables
