@@ -65,6 +65,7 @@ coverage.xml
 # Local database, logs, and data
 chroma_db/
 last_sync_time.txt
+requirements.txt
 processed_csv.log
 *.sqlite3
 *.db

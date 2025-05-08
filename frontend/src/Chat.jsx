@@ -13,10 +13,11 @@ export default function Chat() {
     setMessages([...messages, { sender: "user", text: input }]);
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:8000/chat", {
-        query: input,
-        max_results: 5
+      const res = await axios.post("http://127.0.0.1:8000/chat", {
+        question: input
       });
+      
+      
       setMessages(msgs => [
         ...msgs,
         { sender: "bot", text: res.data.answer }
