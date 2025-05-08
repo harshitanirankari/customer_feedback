@@ -80,6 +80,11 @@ frontend/dist/
 
 # CSV files
 csv_files/
+csv_data/
+
+# Vector store and metadata
+faiss_index/
+metadata/
 
 # Misc
 *.log
