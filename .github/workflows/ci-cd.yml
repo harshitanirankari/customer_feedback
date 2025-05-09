@@ -54,12 +54,13 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - uses: actions/download-artifact@v3
+    - name: Download backend image
+      uses: actions/download-artifact@v3
       with:
         name: backend-image
+
     - name: Load backend image
       run: gunzip -c backend-image/feedback-analyzer.tar.gz | docker load
-
 
     - name: Start containers
       run: docker compose up -d
@@ -76,12 +77,6 @@ jobs:
         echo "Backend did not start in time!" >&2
         docker compose logs
         exit 1
-    - name: Run tests
-      run: |
-        pytest tests || (docker compose logs && exit 1)
-    - name: Stop containers
-      if: always()
-      run: docker compose down
 
     - name: Run tests
       run: |
@@ -90,5 +85,3 @@ jobs:
     - name: Stop containers
       if: always()
       run: docker compose down
-
-    # Optional: Add deployment steps here if needed
