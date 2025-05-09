@@ -76,3 +76,29 @@ services:
     volumes:
       - ./logs:/app/logs
     command: ["python", "run_pipeline.py", "full"]
+
+  # Backend API service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - kafka-setup
+    environment: {}
+    restart: unless-stopped
+
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment: {}
+    restart: unless-stopped

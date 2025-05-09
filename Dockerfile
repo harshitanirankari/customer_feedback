@@ -1,14 +1,16 @@
-FROM python:alpine
+FROM python:3.10-slim
 
 # Set working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apk update && apk add --no-cache \
-    gcc \
-    g++ \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     python3-dev \
-    musl-dev
+    cargo \
+    rustc \
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file
 COPY requirements.txt .
@@ -26,7 +28,7 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 
 # Create a non-root user to run the application
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN groupadd --system appgroup && useradd --system --gid appgroup appuser
 RUN chown -R appuser:appgroup /app
 USER appuser
 
