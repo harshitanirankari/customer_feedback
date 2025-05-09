@@ -43,9 +43,7 @@ jobs:
 
     - name: Run tests
       run: |
-        # Adjust this command to your test runner (pytest, unittest, etc.)
-        pytest backend/test_*.py || (docker-compose logs && exit 1)
-
+        pytest tests || (docker-compose logs && exit 1)
     - name: Stop containers
       if: always()
       run: docker-compose down
