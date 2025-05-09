@@ -8,6 +8,7 @@ snowflake-connector-python
 google-generativeai
 python-multipart
 requests
+
 praw==7.7.1
 kafka-python==2.0.2
 python-dotenv==1.0.0
