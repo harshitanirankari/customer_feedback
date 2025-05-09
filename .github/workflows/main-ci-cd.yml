@@ -1,18 +1,14 @@
-name: Modern CI/CD Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [main]
 
 jobs:
-  backend-build:
+  test-backend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -23,88 +19,77 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        working-directory: ./backend
+        run: |
+          pip install -r requirements.txt
 
       - name: Run backend tests
+        working-directory: ./backend
         run: |
-          if [ -f "pytest.ini" ] || [ -d "tests" ]; then
-            pip install pytest
-            pytest || true
-          else
-            echo "No tests found."
-          fi
+          pip install pytest
+          pytest || echo "No tests found."
 
-      - name: Build backend Docker image
-        run: docker build -t feedback-backend:latest .
-
-      - name: Save backend Docker image
-        run: docker save feedback-backend:latest | gzip > feedback-backend.tar.gz
-
-      - name: Upload backend Docker image artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: backend-image
-          path: feedback-backend.tar.gz
-
-  frontend-build:
+  test-frontend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
+      - name: Set up Node
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
+        working-directory: ./frontend
         run: npm ci
 
       - name: Run frontend tests
-        run: |
-          if [ -f "package.json" ]; then
-            npm test || echo "No tests defined."
-          fi
+        working-directory: ./frontend
+        run: npm test || echo "No tests found."
 
-      - name: Build frontend
-        run: npm run build
-
-      - name: Build frontend Docker image
-        run: docker build -t feedback-frontend:latest .
-
-      - name: Save frontend Docker image
-        run: docker save feedback-frontend:latest | gzip > feedback-frontend.tar.gz
-
-      - name: Upload frontend Docker image artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: frontend-image
-          path: feedback-frontend.tar.gz
-
-  deploy:
+  build-and-deploy:
+    needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
-    needs: [backend-build, frontend-build]
     steps:
-      - name: Download backend image artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: backend-image
-          path: ./backend
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Download frontend image artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: frontend-image
-          path: ./frontend
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: List artifacts
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/feedback-backend:latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/feedback-frontend:latest
+
+      - name: Deploy with Docker Compose (Optional)
         run: |
-          ls -lh ./backend
-          ls -lh ./frontend
-
-      # Add your deployment steps here (e.g., push to Docker Hub, deploy to cloud, etc.)
-      - name: Deployment placeholder
-        run: echo "Add deployment logic here."
+          docker-compose -f docker-compose.yml up -d --build
+        env:
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
