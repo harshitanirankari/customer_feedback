@@ -3,7 +3,7 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY requirements1.txt .
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cargo \
