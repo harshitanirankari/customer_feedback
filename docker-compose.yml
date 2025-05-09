@@ -56,7 +56,7 @@ services:
   # Customer feedback analysis application
   feedback-analyzer:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: feedback-analyzer
     depends_on:
