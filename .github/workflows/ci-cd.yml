@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build-test-deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,18 +17,49 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.11.9'
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Free up disk space
+    - name: Free up even more disk space
       run: |
-        docker system prune -af || true
-        rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost || true
+        docker system prune -af --volumes || true
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache || true
+        sudo apt-get clean
+        df -h
 
     - name: Build Docker images
       run: docker compose build
+
+    - name: Save backend image
+      run: docker save feedback-analyzer:latest | gzip > feedback-analyzer.tar.gz
+    - uses: actions/upload-artifact@v3
+      with:
+        name: backend-image
+        path: feedback-analyzer.tar.gz
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11.9'
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - uses: actions/download-artifact@v3
+      with:
+        name: backend-image
+    - name: Load backend image
+      run: gunzip -c backend-image/feedback-analyzer.tar.gz | docker load
+
 
     - name: Start containers
       run: docker compose up -d
@@ -45,10 +76,17 @@ jobs:
         echo "Backend did not start in time!" >&2
         docker compose logs
         exit 1
+    - name: Run tests
+      run: |
+        pytest tests || (docker compose logs && exit 1)
+    - name: Stop containers
+      if: always()
+      run: docker compose down
 
     - name: Run tests
       run: |
         pytest tests || (docker compose logs && exit 1)
+
     - name: Stop containers
       if: always()
       run: docker compose down

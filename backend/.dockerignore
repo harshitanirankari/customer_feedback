@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+chroma_db/
+last_sync_time.txt
+processed_csv.log
+*.log
+tests/
+data/
+uploaded_csvs/

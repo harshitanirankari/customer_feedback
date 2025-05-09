@@ -3,7 +3,7 @@ FROM node:18-alpine as build
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN npm run build
 
